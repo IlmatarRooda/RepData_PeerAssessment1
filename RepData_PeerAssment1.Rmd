@@ -1,0 +1,134 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+RepData_PeerAssessment1
+========================================
+
+Loading the data
+```{r echo=FALSE}
+setwd("~/Downloads/")
+```
+
+```{r}
+data <- read.csv2("activity.csv", header= TRUE, sep = ",")
+summary(data)
+head(data)
+
+```
+```{r}
+data2 = as.data.frame(data[complete.cases(data), ])
+summary(data)
+```
+
+
+# Histogram of the total number of steps taken each day
+
+```{r}
+steps <- tapply(data2$steps, data2$date, sum)
+
+hist(steps,main = "Number of steps per Day", xlab = "Total Steps per Day", ylab = "Days")
+
+```
+
+#Mean and median number of steps taken each day
+```{r}
+meansteps = mean(steps, na.rm = TRUE)
+meansteps
+```
+
+```{r}
+mediansteps = median(steps, na.rm = TRUE)
+mediansteps
+```
+
+#Time series plot of the average number of steps taken
+```{r}
+avgerage_number = aggregate(data2$steps, by = list(data2$interval), FUN = mean)
+summary(avgerage_number)
+```
+
+```{r}
+plot(avgerage_number[, 1], avgerage_number[, 2], type = "l", 
+     xlab = "5 min Intervals in a day", 
+     ylab = "Average Number of Steps", 
+     main = "The Average Daily Activity Pattern")
+```
+
+
+#The 5-minute interval that, on average, contains the maximum number of steps
+
+```{r}
+maxsteps = avgerage_number[which.max(avgerage_number[, 2]), 1]
+maxsteps
+```
+
+#Code to describe and show a strategy for imputing missing data
+
+```{r}
+sum(!complete.cases(data))
+```
+
+```{r}
+data3 = data
+len1 = nrow(data3)
+len2 = nrow(avgerage_number)
+for (i in 1:len1) {
+  if (is.na(data3$steps[i])) {
+    for (j in 1:len2) {
+      if (data3$interval[i] == avgerage_number[j, 1]) {
+        data3$steps[i] = avgerage_number[j, 2]
+      }
+    } 
+  }    
+}
+summary(data3)
+```
+
+#Histogram of the total number of steps taken each day after missing values are imputed
+```{r}
+totalsteps2 = tapply(data3$steps, data3$date, sum)
+hist(totalsteps2, main = "Number of steps per Day", xlab = "Total Steps per Day", ylab = "Days" )
+```
+
+#Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+```{r}
+data2$weekday = TRUE
+weekday = weekdays(as.POSIXct(data2$date, format = "%Y-%m-%d" ))
+for (i in 1:length(weekday)) {
+  if (weekday[i] == "Saturday" | weekday[i] == "Sunday") {
+    data2$weekday[i] = FALSE
+  }
+}
+data_weekday = data2[which(data2$weekday == TRUE), ]
+data_weekend = data2[which(data2$weekday == FALSE), ]
+
+average_weekday = aggregate(data_weekday$steps, 
+                               by = list(data_weekday$interval), 
+                               FUN = mean)
+names(average_weekday) = c("interval", "steps")
+average_weekday$dayTag = "weekday"
+
+average_weekend = aggregate(data_weekend$steps, 
+                              by = list(data_weekend$interval), 
+                              FUN = mean)
+names(average_weekend)= c("interval", "steps")
+average_weekend$dayTag = "weekend"
+
+average_pattern = rbind(average_weekday, average_weekend)
+```
+
+```{r echo=FALSE}
+library(lattice)
+```
+
+
+```{r}
+xyplot(steps ~ interval | dayTag, data = average_pattern, 
+       type = "l", layout = c(1, 2))
+```
+
